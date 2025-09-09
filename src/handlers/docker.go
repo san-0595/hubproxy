@@ -99,6 +99,18 @@ func ProxyDockerRegistryGin(c *gin.Context) {
 func handleRegistryRequest(c *gin.Context, path string) {
 	pathWithoutV2 := strings.TrimPrefix(path, "/v2/")
 
+    // 兼容 containerd 的 ns 参数
+    if ns := c.Query("ns"); ns != "" {
+        if registryDetector.isRegistryEnabled(ns) {
+            remainingPath := pathWithoutV2
+            handleMultiRegistryRequest(c, ns, remainingPath)
+            return
+        } else {
+            c.String(http.StatusBadRequest, "ns 参数对应的镜像仓库不支持")
+            return
+        }
+    }
+
 	if registryDomain, remainingPath := registryDetector.detectRegistryDomain(pathWithoutV2); registryDomain != "" {
 		if registryDetector.isRegistryEnabled(registryDomain) {
 			c.Set("target_registry_domain", registryDomain)
